@@ -1,52 +1,55 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-style="notion">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#F7F6F2">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
   <title>地点标注工作台 · iPad 版</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="ipad-ui.css">
 </head>
 <body>
   <header class="topbar" id="topbar">
     <div class="topbar-main">
-      <div class="brand"><span class="brand-mark">◈</span><div><strong>地点标注工作台</strong><small>iPad 离线版 · DPR / CPR</small></div></div>
-      <div class="top-actions">
+      <div class="header-primary">
+        <div class="brand"><span class="brand-mark"><img src="icon.svg" alt=""></span><div><strong>地点标注</strong><small>标注工作台 · iPad</small></div></div>
+        <div class="workspace-identity"><span>当前工作区</span><strong id="filename" class="filename">尚未导入文件</strong></div>
+        <div class="view-controls" aria-label="界面外观">
+          <div class="style-switch" role="group" aria-label="界面风格"><button id="style-notion" type="button" aria-pressed="true">Notion</button><button id="style-macos" type="button" aria-pressed="false">macOS</button></div>
+          <button id="theme" class="quiet" type="button" aria-label="切换深色模式">☾ <span>深色</span></button>
+        </div>
+      </div>
+      <div class="header-secondary">
         <div class="progress-summary" aria-label="审核进度">
           <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
           <span id="progress-text">全部 0 · 已标注 0 · 待审核 0 · 审核完 0 · 不标记 0</span>
         </div>
-        <span id="filename" class="filename">尚未导入文件</span>
-        <span id="offline-status" class="offline-status" aria-live="polite">离线准备中</span>
-        <button id="save-status" class="save-status" type="button" aria-live="polite" title="保存失败时点击重试"></button>
-        <button id="theme" class="quiet" type="button" aria-label="切换深色模式">◐ <span>外观</span></button>
-        <button id="import" type="button">导入 JSON</button>
-        <select id="export-mode" aria-label="导出模式"><option value="reviewed">只导出审核完</option><option value="all">导出全部（可续做）</option></select>
-        <button id="export" class="primary" type="button" disabled>导出 JSON</button>
-        <input id="file" type="file" accept=".json,application/json" hidden>
+        <div class="workspace-status"><span id="offline-status" class="offline-status" aria-live="polite">离线准备中</span><button id="save-status" class="save-status" type="button" aria-live="polite" title="保存失败时点击重试"></button></div>
+        <div class="top-actions"><button id="wheel-toggle" class="quiet" type="button" aria-label="切换鼠标滚轮方向" aria-pressed="true">滚轮：反向</button><button id="import" type="button">导入 JSON</button><div class="export-group"><select id="export-mode" aria-label="导出模式"><option value="reviewed">只导出审核完</option><option value="all">导出全部（可续做）</option></select><button id="export" class="primary" type="button" disabled>导出 JSON</button></div><input id="file" type="file" accept=".json,application/json" hidden></div>
       </div>
     </div>
     <button id="toggle-topbar" class="collapse-toggle" type="button" aria-controls="topbar" aria-expanded="true">收起顶部栏 ▴</button>
   </header>
-  <section class="filterbar" id="filterbar" aria-label="搜索和筛选">
-    <div class="filterbar-main">
-      <label class="query-label"><span>搜索文档</span><input id="query" type="search" placeholder="标题、正文、文档 ID 或标注文字" autocomplete="off"></label>
-      <label><span>搜索方式</span><select id="scope"><option value="full">全文包含</option><option value="contains">标注包含</option><option value="start">标注开头</option><option value="end">标注结尾</option><option value="exact">标注完全一致</option></select></label>
-      <button id="favorites-filter" class="favorites-filter" type="button" aria-pressed="false">☆ 只看收藏</button>
-      <div class="categories" aria-label="按类别筛选"><button class="category active" data-kind="all" type="button">全部 <b id="count-all">0</b></button><button class="category" data-kind="DPR" type="button">DPR <b id="count-DPR">0</b></button><button class="category" data-kind="RBL" type="button">RBL <b id="count-RBL">0</b></button><button class="category" data-kind="AQT" type="button">AQT <b id="count-AQT">0</b></button><button class="category" data-kind="OSR" type="button">OSR <b id="count-OSR">0</b></button><button class="category" data-kind="VVR" type="button">VVR <b id="count-VVR">0</b></button><button class="category" data-kind="ABD" type="button">ABD <b id="count-ABD">0</b></button></div>
-    </div>
-    <button id="toggle-filterbar" class="collapse-toggle" type="button" aria-controls="filterbar" aria-expanded="true">收起筛选栏 ▴</button>
-  </section>
   <main class="layout">
-    <aside class="sidebar"><div class="side-head"><strong id="side-title">文档</strong><span id="doccount">0 篇</span></div><div id="documents" class="documents"></div></aside>
+    <aside class="sidebar">
+      <div class="side-head"><strong id="side-title">文档</strong><span id="doccount">0 篇</span></div>
+      <section class="filterbar" id="filterbar" aria-label="搜索和筛选"><div class="filterbar-main">
+        <label class="query-label"><span>查找</span><input id="query" type="search" placeholder="标题、正文或标注" autocomplete="off"></label>
+        <label><span>匹配方式</span><select id="scope"><option value="full">全文包含</option><option value="contains">标注包含</option><option value="start">标注开头</option><option value="end">标注结尾</option><option value="exact">标注完全一致</option></select></label>
+        <button id="favorites-filter" class="favorites-filter" type="button" aria-pressed="false">☆ 只看收藏</button>
+        <div class="categories" aria-label="按类别筛选"><button class="category active" data-kind="all" type="button">全部 <b id="count-all">0</b></button><button class="category" data-kind="DPR" type="button">DPR <b id="count-DPR">0</b></button><button class="category" data-kind="RBL" type="button">RBL <b id="count-RBL">0</b></button><button class="category" data-kind="AQT" type="button">AQT <b id="count-AQT">0</b></button><button class="category" data-kind="OSR" type="button">OSR <b id="count-OSR">0</b></button><button class="category" data-kind="VVR" type="button">VVR <b id="count-VVR">0</b></button><button class="category" data-kind="ABD" type="button">ABD <b id="count-ABD">0</b></button></div>
+      </div><button id="toggle-filterbar" class="collapse-toggle" type="button" aria-controls="filterbar" aria-expanded="true">收起筛选栏 ▴</button></section>
+      <div id="documents" class="documents"></div>
+    </aside>
     <section class="workspace">
       <div id="welcome" class="welcome"><div class="welcome-icon">⌁</div><h1>从一份城市 JSON 开始</h1><p>导入城市 JSON 或“导出全部”的工作区文件，逐篇检查并调整文字范围与类别。</p><button id="welcome-import" class="primary" type="button">选择 JSON 文件</button><p class="hint">修改自动保存在这台设备；请定期选择“导出全部”，在“文件”App 中确认备份。</p></div>
       <div id="editor" hidden>
         <div class="doc-head"><div class="doc-head-main"><div id="docmeta" class="eyebrow"></div><div class="doc-head-actions"><button id="skip-toggle" type="button">不标记此篇</button><button id="review-toggle" type="button">标记审核完</button></div></div><div class="doc-nav"><button id="prev" class="quiet" type="button" aria-label="上一篇">←</button><button id="next" class="quiet" type="button" aria-label="下一篇">→</button></div></div>
         <div class="editor-grid">
-          <div><div class="section-head"><div><strong>正文</strong><span id="span-count"></span></div><span class="hint">选中文字后点旁边的“标注” · 单击改类别</span></div><div id="context" class="context" tabindex="0" aria-label="文档正文"></div><p class="interaction-help">选中文字后点选区旁的“标注”；已有标注可单击修改类别或删除。</p></div>
+          <div class="reading-panel"><div class="section-head"><div><strong>正文</strong><span id="span-count"></span></div><span class="hint">选中文字后点“标注”</span></div><div id="context" class="context" tabindex="0" aria-label="文档正文"></div><p class="interaction-help">选中文字后点选区旁的“标注”；已有标注可单击修改类别或删除。</p></div>
           <aside class="annotations-panel"><div class="section-head"><strong>本篇标注</strong><button id="add-selection" class="quiet" type="button" disabled>标注选中文字</button></div><div id="issues"></div><div id="annotations"></div></aside>
         </div>
       </div>

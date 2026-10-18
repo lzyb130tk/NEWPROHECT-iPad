@@ -12,8 +12,25 @@
   }
   let docs=[],fileName='',active=-1,filterKind='all',favoritesOnly=false,selected=-1,pending=null,dragging=null,dirty=false,toastTimer=null,selectionDraft=null,selectionActionPress=false;
   let sessionId=null,reviewed=[],lastPendingDocId=null,changeVersion=0,savedVersion=0,savePromise=null,saveFailed=false,exportOverlapAcknowledged=false;
-  function applyTheme(dark){document.documentElement.classList.toggle('dark',dark);document.querySelector('meta[name="theme-color"]').content=dark?'#20201E':'#F7F6F2'}
-  let theme=false;try{theme=localStorage.getItem('newprohect-theme')==='dark'}catch{}applyTheme(theme);
+  let theme=false,visualStyle='notion',reverseWheel=true;
+  try{theme=localStorage.getItem('newprohect-theme')==='dark';visualStyle=localStorage.getItem('newprohect-style')==='macos'?'macos':'notion';reverseWheel=localStorage.getItem('newprohect-wheel-reverse')!=='false'}catch{}
+  function applyAppearance(){
+    const root=document.documentElement;root.dataset.style=visualStyle;root.classList.toggle('dark',theme);
+    document.querySelector('meta[name="theme-color"]').content=visualStyle==='notion'?(theme?'#20201E':'#F7F6F2'):(theme?'#1C1C1E':'#F5F5F7');
+    for(const style of ['notion','macos'])$('style-'+style).setAttribute('aria-pressed',String(visualStyle===style));
+    $('theme').innerHTML=theme?'☀ <span>浅色</span>':'☾ <span>深色</span>';
+    $('theme').setAttribute('aria-label',theme?'切换浅色模式':'切换深色模式');
+  }
+  function applyWheelPreference(){const button=$('wheel-toggle');button.textContent=reverseWheel?'滚轮：反向':'滚轮：标准';button.setAttribute('aria-pressed',String(reverseWheel));button.title=reverseWheel?'向后滚向下；点击切换方向':'向前滚向下；点击切换方向'}
+  applyAppearance();applyWheelPreference();
+  document.addEventListener('wheel',event=>{
+    if(event.ctrlKey||event.metaKey||Math.abs(event.deltaX)>Math.abs(event.deltaY))return;
+    const scroller=event.target instanceof Element?event.target.closest('#documents,.reading-panel,.annotations-panel'):null;
+    if(!scroller||!event.deltaY)return;
+    const unit=event.deltaMode===1?32:event.deltaMode===2?scroller.clientHeight:1;
+    const distance=Math.sign(event.deltaY)*Math.max(64,Math.abs(event.deltaY*unit)*2.4);
+    event.preventDefault();scroller.scrollTop+=(reverseWheel?-1:1)*distance;
+  },{passive:false});
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200)}
   function current(){return docs[active]}
   function newId(){return 'review_'+(crypto.randomUUID?.()||`${Date.now()}_${Math.random().toString(36).slice(2)}`)}
@@ -57,7 +74,7 @@
   function toggleReview(i){if(!docs[i])return;reviewed[i]=!reviewed[i];delete docs[i].review_skipped;resetExportWarning();renderCounts();renderDocuments();if(i===active)renderReviewButton();persist()}
   function toggleSkip(i){if(!docs[i])return;if(docs[i].review_skipped===true)delete docs[i].review_skipped;else{docs[i].review_skipped=true;reviewed[i]=false}resetExportWarning();renderCounts();renderDocuments();if(i===active)renderReviewButton();persist()}
   function renderReviewButton(){const done=!!reviewed[active],skipped=current()?.review_skipped===true&&!done;$('review-toggle').textContent=done?'改为待审核':'标记审核完';$('review-toggle').classList.toggle('reviewed',done);$('skip-toggle').textContent=skipped?'恢复待审核':'不标记此篇';$('skip-toggle').classList.toggle('skipped',skipped)}
-  function revealActiveDocument(){if(favoritesOnly||active<0)return;requestAnimationFrame(()=>{const sidebar=document.querySelector('.sidebar'),item=$('documents').querySelector(`[data-doc="${active}"]`);if(!sidebar||!item)return;const sidebarRect=sidebar.getBoundingClientRect(),itemRect=item.getBoundingClientRect(),top=sidebar.scrollTop+itemRect.top-sidebarRect.top-(sidebar.clientHeight-itemRect.height)/2;sidebar.scrollTo({top:Math.max(0,top),behavior:'auto'})})}
+  function revealActiveDocument(){if(favoritesOnly||active<0)return;requestAnimationFrame(()=>{const list=$('documents'),item=list.querySelector(`[data-doc="${active}"]`);if(!item)return;const listRect=list.getBoundingClientRect(),itemRect=item.getBoundingClientRect(),top=list.scrollTop+itemRect.top-listRect.top-(list.clientHeight-itemRect.height)/2;list.scrollTo({top:Math.max(0,top),behavior:'auto'})})}
   function openDoc(i){if(i<0||i>=docs.length)return;const changed=i!==active;clearSelectionToolbar();active=i;selected=favoritesOnly?(favoriteResults().find(item=>item.docIndex===i)?.annIndex??-1):-1;pending=null;hideMenu();renderDocuments();renderEditor();revealActiveDocument();if(changed)persist()}
   function openFavorite(docIndex,annIndex){openDoc(docIndex);locateAnnotation(annIndex);renderDocuments()}
   function renderEditor(){const doc=current();$('welcome').hidden=!!doc;$('editor').hidden=!doc;if(!doc)return;const indices=visibleIndices(),position=indices.indexOf(active);$('docmeta').textContent=`第 ${active+1} 篇 / 共 ${docs.length} 篇 · ID ${doc.id}`;$('prev').disabled=position<=0;$('next').disabled=position<0||position>=indices.length-1;$('span-count').textContent=`${doc.annotations.filter(a=>M.kind(a)).length} 条地点标注`;renderReviewButton();renderContext();renderAnnotations()}
@@ -144,7 +161,9 @@
   $('prev').onclick=()=>{const indices=visibleIndices(),i=indices.indexOf(active);if(i>0)openDoc(indices[i-1])};$('next').onclick=()=>{const indices=visibleIndices(),i=indices.indexOf(active);if(i>=0&&i<indices.length-1)openDoc(indices[i+1])};
   $('review-toggle').onclick=()=>toggleReview(active);
   $('skip-toggle').onclick=()=>toggleSkip(active);
-  $('theme').onclick=()=>{const dark=!document.documentElement.classList.contains('dark');applyTheme(dark);try{localStorage.setItem('newprohect-theme',dark?'dark':'light')}catch{}};
+  $('theme').onclick=()=>{theme=!theme;applyAppearance();try{localStorage.setItem('newprohect-theme',theme?'dark':'light')}catch{}};
+  for(const style of ['notion','macos'])$('style-'+style).onclick=()=>{visualStyle=style;applyAppearance();try{localStorage.setItem('newprohect-style',style)}catch{}};
+  $('wheel-toggle').onclick=()=>{reverseWheel=!reverseWheel;applyWheelPreference();try{localStorage.setItem('newprohect-wheel-reverse',String(reverseWheel))}catch{}};
   $('save-status').onclick=()=>{if(saveFailed)persist()};
   for(const [buttonId,panelId,label] of [['toggle-topbar','topbar','顶部栏'],['toggle-filterbar','filterbar','筛选栏']]){
     const button=$(buttonId),panel=$(panelId),key='newprohect-'+panelId+'-collapsed';
