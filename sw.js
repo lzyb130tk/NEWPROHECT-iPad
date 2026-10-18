@@ -1,4 +1,4 @@
-const CACHE='newprohect-ipad-v1';
+const CACHE='newprohect-ipad-v2';
 const ASSETS=['./','./index.html','./style.css','./model.js','./storage.js','./app.js','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));

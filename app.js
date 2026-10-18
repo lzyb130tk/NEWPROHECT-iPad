@@ -11,15 +11,16 @@
     return;
   }
   let docs=[],fileName='',active=-1,filterKind='all',favoritesOnly=false,selected=-1,pending=null,dragging=null,dirty=false,toastTimer=null;
-  let sessionId=null,reviewed=[],changeVersion=0,savedVersion=0,savePromise=null,saveFailed=false,exportOverlapAcknowledged=false;
+  let sessionId=null,reviewed=[],lastPendingDocId=null,changeVersion=0,savedVersion=0,savePromise=null,saveFailed=false,exportOverlapAcknowledged=false;
   let theme=false;try{theme=localStorage.getItem('newprohect-theme')==='dark'}catch{}document.documentElement.classList.toggle('dark',theme);
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200)}
   function current(){return docs[active]}
   function newId(){return 'review_'+(crypto.randomUUID?.()||`${Date.now()}_${Math.random().toString(36).slice(2)}`)}
   function saveStatus(message,failed=false){$('save-status').textContent=message;$('save-status').classList.toggle('failed',failed)}
-  function workspace(){return {session:{id:sessionId,name:fileName,reviewed:[...reviewed],activeDocId:current()?.id??null},docs:structuredClone(docs)}}
+  function workspace(){return {session:{id:sessionId,name:fileName,reviewed:[...reviewed],activeDocId:current()?.id??null,lastPendingDocId},docs:structuredClone(docs)}}
   function persist(){
     if(!sessionId)return;
+    if(current()&&M.isPending(current(),reviewed[active]))lastPendingDocId=current().id;
     changeVersion++;dirty=true;saveFailed=false;saveStatus('保存中…');
     if(savePromise)return;
     savePromise=(async()=>{
@@ -34,7 +35,7 @@
       }
     })().finally(()=>{savePromise=null});
   }
-  function resetExportWarning(){exportOverlapAcknowledged=false;$('export').textContent='导出修改文件'}
+  function resetExportWarning(){exportOverlapAcknowledged=false;$('export').textContent='导出 JSON'}
   function markChanged(){resetExportWarning();renderCounts();if(favoritesOnly)applyFilter(false);else renderDocuments();persist()}
   function validRanges(doc){return doc.annotations.map((a,index)=>({a,index})).filter(({a})=>M.kind(a)&&!M.annotationIssues(doc,a).some(issue=>issue.includes('位置'))).sort((x,y)=>x.a.start-y.a.start||y.a.end-x.a.end)}
   function favoriteResults(){const q=$('query').value,scope=$('scope').value,items=[];docs.forEach((doc,docIndex)=>doc.annotations.forEach((a,annIndex)=>{if((filterKind==='all'||M.kind(a)===filterKind)&&M.searchFavorite(doc,a,q,scope))items.push({docIndex,annIndex,a})}));return items}
@@ -145,54 +146,49 @@
     if(savePromise)await savePromise;
     if(dirty)throw Error('当前修改尚未保存，请点击保存状态重试后再导入');
     const source=await file.text(),input=JSON.parse(source.replace(/^\uFEFF/,''));
-    let result;
-    if(input?.format==='newprohect-ipad-backup-v1'){
-      const restored=M.parseCity(input.docs);
-      if(!Array.isArray(input.reviewed)||input.reviewed.length!==restored.length||input.reviewed.some(value=>typeof value!=='boolean'))throw Error('完整备份的审核状态无效');
-      result={docs:restored,session:{id:crypto.randomUUID(),name:String(input.name||file.name).split(/[\\/]/).pop().slice(0,200),reviewed:input.reviewed,activeDocId:input.activeDocId}};
-    }else{
-      const imported=M.parseCity(input);
-      result={docs:imported,session:{id:crypto.randomUUID(),name:file.name.slice(0,200),reviewed:imported.map(()=>false),activeDocId:imported[0]?.id??null}};
-    }
-    if(sessionId&&!confirm('导入会替换这台 iPad 上的当前工作区。请先确认已把需要的内容导出或完整备份。继续导入吗？'))return;
+    const imported=M.parseImport(input,file.name);
+    const result={docs:imported.docs,session:{id:crypto.randomUUID(),name:imported.name.split(/[\\/]/).pop().slice(0,200),reviewed:imported.reviewed,activeDocId:imported.activeDocId,lastPendingDocId:imported.lastPendingDocId}};
+    if(sessionId&&!confirm('导入会替换这台 iPad 上的当前工作区。请先确认已用“导出全部”保存需要的内容。继续导入吗？'))return;
     await S.save(result);
-    docs=result.docs;reviewed=result.session.reviewed;sessionId=result.session.id;fileName=result.session.name;dirty=false;saveFailed=false;changeVersion=0;savedVersion=0;
+    docs=result.docs;reviewed=result.session.reviewed;lastPendingDocId=result.session.lastPendingDocId??null;sessionId=result.session.id;fileName=result.session.name;dirty=false;saveFailed=false;changeVersion=0;savedVersion=0;
     active=docs.findIndex(doc=>String(doc.id)===String(result.session.activeDocId));if(active<0)active=docs.length?0:-1;selected=-1;filterKind='all';favoritesOnly=false;$('favorites-filter').classList.remove('active');$('favorites-filter').setAttribute('aria-pressed','false');$('favorites-filter').textContent='☆ 只看收藏';$('query').value='';$('query').placeholder='标题、正文、文档 ID 或标注文字';$('scope').value='full';$('scope').options[0].textContent='全文包含';document.querySelectorAll('.category').forEach(b=>b.classList.toggle('active',b.dataset.kind==='all'));
-    $('filename').textContent=fileName;$('export').disabled=false;$('backup').disabled=false;resetExportWarning();saveStatus('已自动保存');renderCounts();renderDocuments();renderEditor();toast(`已导入 ${docs.length} 篇文档`);
+    $('filename').textContent=fileName;$('export').disabled=false;resetExportWarning();saveStatus('已自动保存');renderCounts();renderDocuments();renderEditor();toast(`已导入 ${docs.length} 篇文档`);
   }catch(error){toast(`导入失败：${error.message}`)}finally{e.target.value=''}};
   function locateExportOverlap(conflict){
     favoritesOnly=false;filterKind='all';$('favorites-filter').classList.remove('active');$('favorites-filter').setAttribute('aria-pressed','false');$('favorites-filter').textContent='☆ 只看收藏';$('query').value='';$('query').placeholder='标题、正文、文档 ID 或标注文字';$('scope').value='full';$('scope').options[0].textContent='全文包含';document.querySelectorAll('.category').forEach(button=>button.classList.toggle('active',button.dataset.kind==='all'));
     renderCounts();openDoc(conflict.docIndex);locateAnnotation(conflict.annotationIndex);revealActiveDocument();
   }
   function downloadJson(name,value){const blob=new Blob([JSON.stringify(value,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000)}
-  $('backup').onclick=()=>{
-    if(!sessionId)return;
-    const backup={format:'newprohect-ipad-backup-v1',name:fileName,activeDocId:current()?.id??null,reviewed:[...reviewed],docs:structuredClone(docs),createdAt:new Date().toISOString()};
-    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
-    downloadJson(fileName.replace(/\.json$/i,'')+'_backup_'+stamp+'.json',backup);
-    toast('完整备份已开始下载；请在“文件”App 确认文件已保存');
-  };
+  $('export-mode').onchange=resetExportWarning;
   $('export').onclick=()=>{
     if(!docs.length)return;
-    const overlaps=M.exportOverlaps(docs);
+    const mode=$('export-mode').value;
+    if(mode==='all'){
+      const output=M.exportAll(docs,reviewed,current()?.id??null,lastPendingDocId,fileName);
+      const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+      downloadJson(fileName.replace(/\.json$/i,'')+'_all_'+stamp+'.json',output);
+      resetExportWarning();toast('全部工作区已开始下载；请在“文件”App 确认文件已保存');return;
+    }
+    const indices=docs.map((_,i)=>i).filter(i=>reviewed[i]===true);
+    const overlaps=M.exportOverlaps(indices.map(i=>docs[i])).map(conflict=>({...conflict,docIndex:indices[conflict.docIndex]}));
     if(overlaps.length&&!exportOverlapAcknowledged){
       exportOverlapAcknowledged=true;$('export').textContent=`仍然导出（${overlaps.length} 处重叠）`;
       locateExportOverlap(overlaps[0]);
       toast(`发现 ${overlaps.length} 处范围重叠，已定位第一处；检查后再次点击可导出`);
       return;
     }
-    const name=fileName.replace(/\.json$/i,'')+'_reviewed.json',output=M.exportDocs(docs);
+    const name=fileName.replace(/\.json$/i,'')+'_reviewed.json',output=M.exportReviewed(docs,reviewed);
     downloadJson(name,output);resetExportWarning();
-    toast(`已开始下载 ${name}（${output.length} 篇，排除 ${docs.length-output.length} 篇不标记）`);
+    toast(`已开始下载 ${name}（审核完 ${output.length} 篇）`);
   };
   window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
   async function restore(){
     try{
       const result=await S.load();
       if(result?.session){
-        docs=M.parseCity(result.docs);reviewed=result.session.reviewed;sessionId=result.session.id;fileName=result.session.name;
+        docs=M.parseCity(result.docs);reviewed=result.session.reviewed;lastPendingDocId=result.session.lastPendingDocId??null;sessionId=result.session.id;fileName=result.session.name;
         active=docs.findIndex(doc=>String(doc.id)===String(result.session.activeDocId));if(active<0)active=docs.length?0:-1;
-        $('filename').textContent=fileName;$('export').disabled=!docs.length;$('backup').disabled=false;saveStatus('已自动保存');
+        $('filename').textContent=fileName;$('export').disabled=!docs.length;saveStatus('已自动保存');
       }
     }catch(error){saveStatus('本地存储不可用',true);toast(`读取失败：${error.message}`)}
     renderCounts();renderDocuments();renderEditor();revealActiveDocument();

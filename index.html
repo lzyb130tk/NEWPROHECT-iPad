@@ -23,8 +23,8 @@
         <button id="save-status" class="save-status" type="button" aria-live="polite" title="保存失败时点击重试"></button>
         <button id="theme" class="quiet" type="button" aria-label="切换深色模式">◐ <span>外观</span></button>
         <button id="import" type="button">导入 JSON</button>
-        <button id="backup" type="button" disabled>完整备份</button>
-        <button id="export" class="primary" type="button" disabled>导出修改文件</button>
+        <select id="export-mode" aria-label="导出模式"><option value="reviewed">只导出审核完</option><option value="all">导出全部（可续做）</option></select>
+        <button id="export" class="primary" type="button" disabled>导出 JSON</button>
         <input id="file" type="file" accept=".json,application/json" hidden>
       </div>
     </div>
@@ -42,7 +42,7 @@
   <main class="layout">
     <aside class="sidebar"><div class="side-head"><strong id="side-title">文档</strong><span id="doccount">0 篇</span></div><div id="documents" class="documents"></div></aside>
     <section class="workspace">
-      <div id="welcome" class="welcome"><div class="welcome-icon">⌁</div><h1>从一份城市 JSON 开始</h1><p>导入城市 JSON 或本工作台的完整备份，逐篇检查并调整文字范围与类别。</p><button id="welcome-import" class="primary" type="button">选择 JSON 文件</button><p class="hint">修改自动保存在这台设备；请定期点“完整备份”，将文件存入 iPad“文件”App。</p></div>
+      <div id="welcome" class="welcome"><div class="welcome-icon">⌁</div><h1>从一份城市 JSON 开始</h1><p>导入城市 JSON 或“导出全部”的工作区文件，逐篇检查并调整文字范围与类别。</p><button id="welcome-import" class="primary" type="button">选择 JSON 文件</button><p class="hint">修改自动保存在这台设备；请定期选择“导出全部”，在“文件”App 中确认备份。</p></div>
       <div id="editor" hidden>
         <div class="doc-head"><div class="doc-head-main"><div id="docmeta" class="eyebrow"></div><div class="doc-head-actions"><button id="skip-toggle" type="button">不标记此篇</button><button id="review-toggle" type="button">标记审核完</button></div></div><div class="doc-nav"><button id="prev" class="quiet" type="button" aria-label="上一篇">←</button><button id="next" class="quiet" type="button" aria-label="下一篇">→</button></div></div>
         <div class="editor-grid">

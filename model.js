@@ -72,6 +72,33 @@
     return {total:docs.length,done,skipped,pending:docs.length-done-skipped};
   }
   const exportDocs=docs=>docs.filter(doc=>doc.review_skipped!==true);
+  const isPending=(doc,done)=>done!==true&&doc.review_skipped!==true;
+  const exportReviewed=(docs,reviewed)=>docs.filter((_,i)=>reviewed[i]===true);
+  function resumePendingIndex(docs,reviewed,lastPendingDocId,activeDocId){
+    const byId=id=>docs.findIndex((doc,i)=>String(doc.id)===String(id)&&isPending(doc,reviewed[i]));
+    if(lastPendingDocId!==null&&lastPendingDocId!==undefined){const i=byId(lastPendingDocId);if(i>=0)return i;}
+    if(activeDocId!==null&&activeDocId!==undefined){const i=byId(activeDocId);if(i>=0)return i;}
+    const anchor=docs.findIndex(doc=>String(doc.id)===String(activeDocId));
+    const pending=docs.map((doc,i)=>isPending(doc,reviewed[i])?i:-1).filter(i=>i>=0);
+    if(pending.length)return anchor<0?pending[0]:pending.reduce((best,i)=>Math.abs(i-anchor)<=Math.abs(best-anchor)?i:best);
+    return anchor>=0?anchor:(docs.length?0:-1);
+  }
+  function exportAll(docs,reviewed,activeDocId,lastPendingDocId,name){
+    return {format:'newprohect-workspace-v1',name,activeDocId,lastPendingDocId,reviewed:[...reviewed],docs,exportedAt:new Date().toISOString()};
+  }
+  function parseImport(value,filename){
+    if(Array.isArray(value)){
+      const docs=parseCity(value);
+      return {docs,reviewed:docs.map(()=>false),activeDocId:docs[0]?.id??null,lastPendingDocId:docs[0]?.id??null,name:filename,isWorkspace:false};
+    }
+    if(!value||!['newprohect-workspace-v1','newprohect-ipad-backup-v1'].includes(value.format))throw Error('JSON 格式无效，应为城市文档数组或工作区备份。');
+    const docs=parseCity(value.docs),reviewed=value.reviewed;
+    if(!Array.isArray(reviewed)||reviewed.length!==docs.length||reviewed.some(done=>typeof done!=='boolean'))throw Error('工作区审核状态无效。');
+    const validId=id=>id===null||id===undefined||docs.some(doc=>String(doc.id)===String(id));
+    if(!validId(value.activeDocId)||!validId(value.lastPendingDocId))throw Error('工作区文档位置无效。');
+    const index=resumePendingIndex(docs,reviewed,value.lastPendingDocId,value.activeDocId);
+    return {docs,reviewed,activeDocId:docs[index]?.id??null,lastPendingDocId:value.lastPendingDocId??null,name:typeof value.name==='string'&&value.name?value.name:filename,isWorkspace:true};
+  }
   function exportOverlaps(docs){
     const conflicts=[];
     docs.forEach((doc,docIndex)=>{
@@ -88,7 +115,7 @@
     });
     return conflicts;
   }
-  const api={LABELS,cp,compact,kind,annotationIssues,parseCity,setKind,setRange,searchDoc,searchFavorite,counts,reviewProgress,exportDocs,exportOverlaps};
+  const api={LABELS,cp,compact,kind,annotationIssues,parseCity,parseImport,setKind,setRange,searchDoc,searchFavorite,counts,reviewProgress,isPending,exportDocs,exportReviewed,exportAll,resumePendingIndex,exportOverlaps};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   root.AnnotationModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
