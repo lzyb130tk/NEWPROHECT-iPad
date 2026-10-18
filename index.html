@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f6f3">
+  <meta name="theme-color" content="#F7F6F2">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <title>地点标注工作台 · iPad 版</title>
@@ -46,13 +46,14 @@
       <div id="editor" hidden>
         <div class="doc-head"><div class="doc-head-main"><div id="docmeta" class="eyebrow"></div><div class="doc-head-actions"><button id="skip-toggle" type="button">不标记此篇</button><button id="review-toggle" type="button">标记审核完</button></div></div><div class="doc-nav"><button id="prev" class="quiet" type="button" aria-label="上一篇">←</button><button id="next" class="quiet" type="button" aria-label="下一篇">→</button></div></div>
         <div class="editor-grid">
-          <div><div class="section-head"><div><strong>正文</strong><span id="span-count"></span></div><span class="hint">拖选文字新建 · 单击改类别 · 双击删除 · 拖动两端改范围</span></div><div id="context" class="context" tabindex="0" aria-label="文档正文"></div><p class="interaction-help">右键已选文字可直接指定类别。单击标注可在菜单中复制文字；双击标注删除。也可在右侧管理每条标注。</p></div>
+          <div><div class="section-head"><div><strong>正文</strong><span id="span-count"></span></div><span class="hint">选中文字后点“标注选中文字” · 单击改类别</span></div><div id="context" class="context" tabindex="0" aria-label="文档正文"></div><p class="interaction-help">选中文字后使用屏幕下方的“标注选中文字”按钮；已有标注可单击修改类别或删除。</p></div>
           <aside class="annotations-panel"><div class="section-head"><strong>本篇标注</strong><button id="add-selection" class="quiet" type="button" disabled>标注选中文字</button></div><div id="issues"></div><div id="annotations"></div></aside>
         </div>
       </div>
     </section>
   </main>
   <div id="drag-caret" class="drag-caret" hidden aria-hidden="true"></div>
+  <div id="selection-toolbar" class="selection-toolbar" hidden><span id="selection-preview"></span><button id="create-selection" class="primary" type="button">标注选中文字</button></div>
   <div id="label-menu" class="label-menu" hidden role="menu" aria-label="选择地点类别"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="model.js"></script><script src="storage.js"></script><script src="app.js"></script>
