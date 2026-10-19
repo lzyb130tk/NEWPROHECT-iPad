@@ -93,7 +93,7 @@
     }
     if(!value||!['newprohect-workspace-v1','newprohect-ipad-backup-v1'].includes(value.format))throw Error('JSON 格式无效，应为城市文档数组或工作区备份。');
     const docs=parseCity(value.docs),reviewed=value.reviewed;
-    if(!Array.isArray(reviewed)||reviewed.length!==docs.length||reviewed.some(done=>typeof done!=='boolean'))throw Error('工作区审核状态无效。');
+    if(!Array.isArray(reviewed)||reviewed.length!==docs.length||reviewed.some(done=>typeof done!=='boolean'))throw Error('工作区标注状态无效。');
     const validId=id=>id===null||id===undefined||docs.some(doc=>String(doc.id)===String(id));
     if(!validId(value.activeDocId)||!validId(value.lastPendingDocId))throw Error('工作区文档位置无效。');
     const index=resumePendingIndex(docs,reviewed,value.lastPendingDocId,value.activeDocId);
