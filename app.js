@@ -12,6 +12,7 @@
   }
   let docs=[],fileName='',active=-1,filterKind='all',favoritesOnly=false,selected=-1,pending=null,dragging=null,dirty=false,toastTimer=null,selectionDraft=null,selectionActionPress=false;
   let sessionId=null,reviewed=[],lastPendingDocId=null,changeVersion=0,savedVersion=0,savePromise=null,saveFailed=false,exportOverlapAcknowledged=false;
+  let selectionVisualRange=null,selectionVisualFrame=0;
   let theme=false,visualStyle='notion',reverseWheel=true;
   try{theme=localStorage.getItem('newprohect-theme')==='dark';visualStyle=localStorage.getItem('newprohect-style')==='macos'?'macos':'notion';reverseWheel=localStorage.getItem('newprohect-wheel-reverse')!=='false'}catch{}
   function applyAppearance(){
@@ -33,6 +34,26 @@
   },{passive:false});
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200)}
   function current(){return docs[active]}
+  function clearSelectionVisual(){selectionVisualRange=null;$('selection-visual').replaceChildren()}
+  function drawSelectionVisual(range){
+    const context=$('context');
+    if(!range||range.collapsed||!context.contains(range.startContainer)||!context.contains(range.endContainer)){clearSelectionVisual();return}
+    const contextRect=context.getBoundingClientRect(),panelRect=context.parentElement.getBoundingClientRect(),fontSize=parseFloat(getComputedStyle(context).fontSize)||16;
+    const clip={left:Math.max(0,contextRect.left),right:Math.min(innerWidth,contextRect.right),top:Math.max(0,panelRect.top,contextRect.top),bottom:Math.min(innerHeight,panelRect.bottom,contextRect.bottom)};
+    const lines=[];
+    for(const rect of range.getClientRects()){
+      if(!rect.width||!rect.height)continue;
+      const height=Math.max(16,Math.min(fontSize+6,rect.height-2)),top=rect.top+(rect.height-height)/2;
+      const item={left:Math.max(clip.left,rect.left-3),right:Math.min(clip.right,rect.right+3),top:Math.max(clip.top,top),bottom:Math.min(clip.bottom,top+height)};
+      if(item.right<=item.left||item.bottom<=item.top)continue;
+      const previous=lines.at(-1);
+      if(previous&&Math.abs(previous.top-item.top)<4&&item.left<=previous.right+4){previous.right=Math.max(previous.right,item.right);previous.top=Math.min(previous.top,item.top);previous.bottom=Math.max(previous.bottom,item.bottom)}else lines.push(item);
+    }
+    const fragment=document.createDocumentFragment();
+    for(const line of lines){const rect=document.createElement('span');rect.className='selection-visual-rect';rect.style.left=`${line.left}px`;rect.style.top=`${line.top}px`;rect.style.width=`${line.right-line.left}px`;rect.style.height=`${line.bottom-line.top}px`;fragment.append(rect)}
+    $('selection-visual').replaceChildren(fragment);selectionVisualRange=range.cloneRange();
+  }
+  function refreshSelectionVisual(){if(!selectionVisualRange||selectionVisualFrame)return;selectionVisualFrame=requestAnimationFrame(()=>{selectionVisualFrame=0;if(selectionVisualRange)drawSelectionVisual(selectionVisualRange)})}
   function newId(){return 'review_'+(crypto.randomUUID?.()||`${Date.now()}_${Math.random().toString(36).slice(2)}`)}
   function saveStatus(message,failed=false){$('save-status').textContent=message;$('save-status').classList.toggle('failed',failed)}
   function workspace(){return {session:{id:sessionId,name:fileName,reviewed:[...reviewed],activeDocId:current()?.id??null,lastPendingDocId},docs:structuredClone(docs)}}
@@ -82,7 +103,7 @@
     const label=M.kind(a),boundary=warning.boundary.join('和');
     return `<span class="mark-badges${secondary?' secondary-badges':''}"${secondary?` data-warning-ann="${index}" title="第 ${index+1} 条重叠标注；点击定位"`:''}><sup class="badge">${secondary?`#${index+1} `:''}${label}</sup>${warning.overlap?'<span class="annotation-warning overlap-warning" title="范围与其他标注重叠"><span aria-hidden="true">!</span> 范围重叠</span>':''}${boundary?`<span class="annotation-warning boundary-warning" title="${boundary}含空格、标点或符号">边界含符号/空格</span>`:''}</span>`;
   }
-  function renderContext(){const doc=current(),chars=M.cp(doc.content),ranges=validRanges(doc),warnings=M.annotationWarnings(doc),segments=[],groups=[];let cursor=0;
+  function renderContext(){clearSelectionVisual();const doc=current(),chars=M.cp(doc.content),ranges=validRanges(doc),warnings=M.annotationWarnings(doc),segments=[],groups=[];let cursor=0;
     for(const range of ranges){
       if(range.a.start<cursor){groups.at(-1).hidden.push(range);continue}
       groups.push({...range,hidden:[]});cursor=range.a.end;
@@ -150,8 +171,8 @@
   function removeAnnotation(i){const doc=current();if(!doc?.annotations[i])return;doc.annotations.splice(i,1);selected=-1;markChanged();renderEditor();toast('标注已删除。可重新导入上一次导出的文件恢复。')}
   async function copyText(value){try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(String(value));else{const input=document.createElement('textarea');input.value=String(value);input.style.position='fixed';input.style.opacity='0';document.body.append(input);try{input.select();if(!document.execCommand('copy'))throw Error('复制不可用')}finally{input.remove()}}toast('已复制标注文字')}catch(error){toast(`复制失败：${error.message}`)}}
   function copyAnnotation(i){const a=current()?.annotations[i];if(a)copyText(a.text??'')}
-  function showMenu(x,y,target){clearSelectionToolbar();pending=target;const menu=$('label-menu'),annotation=target.type==='edit'?current()?.annotations[target.index]:null,currentLabel=annotation?M.kind(annotation):null;menu.innerHTML=`<div class="label-menu-title"><span>${target.type==='edit'?'修改类别':'新建标注'}</span><div class="label-menu-title-actions">${target.type==='edit'?'<button type="button" class="menu-delete">删除</button>':''}<button type="button" class="menu-copy">复制</button></div></div>`+M.LABELS.map(label=>`<button type="button" data-label="${label}" class="${label===currentLabel?'current':''}" role="menuitemradio" aria-checked="${label===currentLabel}"><span class="menu-code">${label}</span><span class="menu-name">${names[label]}</span><span class="menu-check" aria-hidden="true">${label===currentLabel?'✓':''}</span></button>`).join('');menu.hidden=false;const width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=`${Math.max(8,Math.min(x,innerWidth-width-8))}px`;menu.style.top=`${Math.max(8,Math.min(y,innerHeight-height-8))}px`;menu.querySelector('.menu-delete')?.addEventListener('click',()=>{removeAnnotation(target.index);hideMenu()});menu.querySelector('.menu-copy').onclick=()=>{const value=target.type==='edit'?current()?.annotations[target.index]?.text:M.cp(current()?.content).slice(target.start,target.end).join('');copyText(value??'')};menu.querySelectorAll('[data-label]').forEach(button=>button.onclick=()=>chooseLabel(button.dataset.label))}
-  function hideMenu(){pending=null;$('label-menu').hidden=true}
+  function showMenu(x,y,target){const draftRange=target.type==='create'?selectionDraft?.domRange:null;clearSelectionToolbar();if(draftRange)drawSelectionVisual(draftRange);pending=target;const menu=$('label-menu'),annotation=target.type==='edit'?current()?.annotations[target.index]:null,currentLabel=annotation?M.kind(annotation):null;menu.innerHTML=`<div class="label-menu-title"><span>${target.type==='edit'?'修改类别':'新建标注'}</span><div class="label-menu-title-actions">${target.type==='edit'?'<button type="button" class="menu-delete">删除</button>':''}<button type="button" class="menu-copy">复制</button></div></div>`+M.LABELS.map(label=>`<button type="button" data-label="${label}" class="${label===currentLabel?'current':''}" role="menuitemradio" aria-checked="${label===currentLabel}"><span class="menu-code">${label}</span><span class="menu-name">${names[label]}</span><span class="menu-check" aria-hidden="true">${label===currentLabel?'✓':''}</span></button>`).join('');menu.hidden=false;const width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=`${Math.max(8,Math.min(x,innerWidth-width-8))}px`;menu.style.top=`${Math.max(8,Math.min(y,innerHeight-height-8))}px`;menu.querySelector('.menu-delete')?.addEventListener('click',()=>{removeAnnotation(target.index);hideMenu()});menu.querySelector('.menu-copy').onclick=()=>{const value=target.type==='edit'?current()?.annotations[target.index]?.text:M.cp(current()?.content).slice(target.start,target.end).join('');copyText(value??'')};menu.querySelectorAll('[data-label]').forEach(button=>button.onclick=()=>chooseLabel(button.dataset.label))}
+  function hideMenu(){const wasCreate=pending?.type==='create';pending=null;$('label-menu').hidden=true;if(wasCreate)clearSelectionVisual()}
   function chooseLabel(label){if(!pending)return;const doc=current();if(pending.type==='edit'){const a=doc.annotations[pending.index];if(a){M.setKind(a,label);selected=pending.index}}else{const {start,end}=pending;const a={id:newId(),start,end,text:'',desc_type:'DPR'};M.setRange(doc,a,start,end);M.setKind(a,label);doc.annotations.push(a);selected=doc.annotations.length-1}hideMenu();getSelection()?.removeAllRanges();$('add-selection').disabled=true;markChanged();renderEditor();for(const element of [$('context').querySelector(`[data-ann="${selected}"]`),$('annotations').querySelector(`[data-row="${selected}"]`)])if(element){element.classList.add('label-change-flash');setTimeout(()=>element.classList.remove('label-change-flash'),1800)}toast(`已选 ${label} · ${names[label]}`)}
   function pointOffset(node,offset){const element=node.nodeType===Node.TEXT_NODE?node.parentElement:node;if(!element||!$('context').contains(element))return null;const segment=element.closest('.segment[data-start]');if(!segment)return null;const base=Number(segment.dataset.start);if(node.nodeType===Node.TEXT_NODE)return base+M.cp(node.textContent.slice(0,offset)).length;if(node===segment)return base+(offset?M.cp(segment.textContent).length:0);return base}
   function selectedRange(){const selection=getSelection();if(!selection||selection.isCollapsed||!$('context').contains(selection.anchorNode)||!$('context').contains(selection.focusNode))return null;const a=pointOffset(selection.anchorNode,selection.anchorOffset),b=pointOffset(selection.focusNode,selection.focusOffset);if(a===null||b===null||a===b)return null;return {start:Math.min(a,b),end:Math.max(a,b)}}
@@ -159,14 +180,16 @@
   function showDragCaret(x,y){const indicator=$('drag-caret'),area=$('context').getBoundingClientRect();indicator.hidden=true;if(x<area.left||x>area.right||y<area.top||y>area.bottom)return;let range=document.caretRangeFromPoint?.(x,y);if(!range){const caret=document.caretPositionFromPoint?.(x,y);if(caret){range=document.createRange();range.setStart(caret.offsetNode,caret.offset);range.collapse(true)}}if(!range||pointOffset(range.startContainer,range.startOffset)===null)return;const rect=range.getClientRects()[0]||range.getBoundingClientRect();if(!rect?.height)return;indicator.style.left=`${rect.left}px`;indicator.style.top=`${rect.top}px`;indicator.style.height=`${rect.height}px`;indicator.hidden=false}
   function stopRangeDrag(){dragging=null;document.documentElement.classList.remove('range-dragging');$('drag-caret').hidden=true}
   function createFromSelection(x,y,allowCharacter=false,useDraft=false){let range=selectedRange()||(useDraft&&selectionDraft&&String(selectionDraft.docId)===String(current()?.id)?selectionDraft:null);if(!range&&allowCharacter){const index=caretAt(x,y);if(index!==null&&index<M.cp(current().content).length)range={start:index,end:index+1}}if(!range)return false;showMenu(x,y,{type:'create',start:range.start,end:range.end});return true}
-  function clearSelectionToolbar(){selectionDraft=null;selectionActionPress=false;$('selection-toolbar').hidden=true;$('add-selection').disabled=true;CSS.highlights?.delete('selection-draft')}
+  function clearSelectionToolbar(){selectionDraft=null;selectionActionPress=false;$('selection-toolbar').hidden=true;$('add-selection').disabled=true;clearSelectionVisual();CSS.highlights?.delete('selection-draft')}
   function positionSelectionToolbar(range){if(!range)return;const rects=Array.from(range.getClientRects()).filter(rect=>rect.width&&rect.height),rect=rects.at(-1)||range.getBoundingClientRect(),bar=$('selection-toolbar');if(!rect?.height)return;bar.hidden=false;const width=bar.offsetWidth,height=bar.offsetHeight;bar.style.left=`${Math.max(8,Math.min(rect.right+8,innerWidth-width-8))}px`;bar.style.top=`${Math.max(8,Math.min(rect.bottom+8,innerHeight-height-8))}px`;if(rect.bottom+height+16>innerHeight)bar.style.top=`${Math.max(8,rect.top-height-8)}px`}
-  function syncSelection(){if(!current()||pending?.type==='create')return;const range=selectedRange();if(range){const domRange=getSelection()?.rangeCount?getSelection().getRangeAt(0).cloneRange():null;selectionDraft={...range,docId:current().id,domRange,custom:false};$('add-selection').disabled=false;positionSelectionToolbar(domRange)}else if(!selectionActionPress&&!selectionDraft?.custom)clearSelectionToolbar()}
-  function finalizeSelection(){if(pending?.type==='create')return;syncSelection();if(!selectionDraft?.domRange||!CSS.highlights||!window.Highlight)return;const range=selectionDraft.domRange;CSS.highlights.set('selection-draft',new Highlight(range));selectionDraft.custom=true;positionSelectionToolbar(range);getSelection()?.removeAllRanges()}
+  function syncSelection(){if(!current()||pending?.type==='create')return;const range=selectedRange();if(range){const domRange=getSelection()?.rangeCount?getSelection().getRangeAt(0).cloneRange():null;selectionDraft={...range,docId:current().id,domRange,custom:false};$('add-selection').disabled=false;drawSelectionVisual(domRange);positionSelectionToolbar(domRange)}else if(!selectionActionPress&&!selectionDraft?.custom)clearSelectionToolbar()}
+  function finalizeSelection(){if(pending?.type==='create')return;syncSelection();if(!selectionDraft?.domRange)return;const range=selectionDraft.domRange;drawSelectionVisual(range);selectionDraft.custom=true;positionSelectionToolbar(range);getSelection()?.removeAllRanges()}
   $('context').addEventListener('mouseup',()=>{syncSelection();setTimeout(finalizeSelection,0)});
   $('context').addEventListener('keyup',syncSelection);
   $('context').addEventListener('touchend',()=>{setTimeout(finalizeSelection,80);setTimeout(finalizeSelection,250)},{passive:true});
   document.addEventListener('selectionchange',syncSelection);
+  document.addEventListener('scroll',refreshSelectionVisual,{capture:true,passive:true});
+  window.addEventListener('resize',refreshSelectionVisual);
   for(const id of ['add-selection','create-selection']){
     const button=$(id);
     button.addEventListener('pointerdown',e=>{selectionActionPress=true;if(e.pointerType==='mouse')e.preventDefault()});
