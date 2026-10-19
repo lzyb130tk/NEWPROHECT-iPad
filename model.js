@@ -5,6 +5,22 @@
   const cp=s=>Array.from(String(s??''));
   const compact=s=>String(s??'').toLocaleLowerCase().replace(/\\[nrt]/g,'').replace(/\s+/gu,'');
   const kind=a=>a.desc_type==='DPR'?'DPR':a.desc_type==='CPR'&&LABELS.includes(a.cpr_pattern)?a.cpr_pattern:null;
+  function hasCompletePairedSuffix(ends){
+    const opening=new Set(['（','(','“','‘','「','『']);
+    const closing={ '）':'（',')':'(','”':'“','’':'‘','」':'「','』':'『' },stack=[];
+    if(!Object.hasOwn(closing,ends.at(-1)))return false;
+    let suffixStart=-1;
+    for(let i=0;i<ends.length;i++){
+      const char=ends[i];
+      if(opening.has(char))stack.push({char,index:i});
+      else if(Object.hasOwn(closing,char)){
+        const start=stack.pop();
+        if(!start||start.char!==closing[char])return false;
+        if(i===ends.length-1)suffixStart=start.index;
+      }
+    }
+    return stack.length===0&&suffixStart>0&&suffixStart<ends.length-2;
+  }
   function annotationIssues(doc,a){
     const chars=cp(doc.content),issues=[];
     if(!Number.isInteger(a.start)||!Number.isInteger(a.end)||a.start<0||a.end>chars.length||a.end<=a.start)issues.push('位置超出正文范围');
@@ -19,7 +35,7 @@
       const value=valid?chars.slice(a.start,a.end).join(''):String(a.text??'');
       const ends=cp(value),boundary=[];
       if(ends.length&&/[\s\p{P}\p{S}]/u.test(ends[0]))boundary.push('开头');
-      if(ends.length&&/[\s\p{P}\p{S}]/u.test(ends.at(-1)))boundary.push('结尾');
+      if(ends.length&&/[\s\p{P}\p{S}]/u.test(ends.at(-1))&&!hasCompletePairedSuffix(ends))boundary.push('结尾');
       return {overlap:false,boundary};
     });
     const ranges=annotations.map((a,index)=>({start:a.start,end:a.end,index}))
@@ -94,6 +110,24 @@
   const exportDocs=docs=>docs.filter(doc=>doc.review_skipped!==true);
   const isPending=(doc,done)=>done!==true&&doc.review_skipped!==true;
   const exportReviewed=(docs,reviewed)=>docs.filter((_,i)=>reviewed[i]===true);
+  const isDprOnly=doc=>doc.annotations.length>0&&doc.annotations.every(a=>kind(a)==='DPR');
+  const exportReviewedWithoutDprOnly=(docs,reviewed)=>exportReviewed(docs,reviewed).filter(doc=>!isDprOnly(doc));
+  function matchingAnnotationIndices(doc,filterKind,query,scope,favoritesOnly=false){
+    if(filterKind==='DPR-only'&&!isDprOnly(doc))return [];
+    const q=compact(query);
+    return doc.annotations.flatMap((a,i)=>{
+      if(favoritesOnly&&a.favorite!==true)return [];
+      const label=kind(a);
+      if(filterKind==='DPR-only'?label!=='DPR':label!==filterKind)return [];
+      const value=compact(a.text);
+      const matches=!q||(
+        scope==='start'?value.startsWith(q):
+        scope==='end'?value.endsWith(q):
+        scope==='exact'?value===q:value.includes(q)
+      );
+      return matches?[i]:[];
+    });
+  }
   function resumePendingIndex(docs,reviewed,lastPendingDocId,activeDocId){
     const byId=id=>docs.findIndex((doc,i)=>String(doc.id)===String(id)&&isPending(doc,reviewed[i]));
     if(lastPendingDocId!==null&&lastPendingDocId!==undefined){const i=byId(lastPendingDocId);if(i>=0)return i;}
@@ -139,7 +173,7 @@
     });
     return conflicts;
   }
-  const api={LABELS,cp,compact,kind,annotationIssues,annotationWarnings,parseCity,parseImport,setKind,setRange,searchDoc,searchFavorite,counts,reviewProgress,isPending,exportDocs,exportReviewed,exportAll,resumePendingIndex,exportOverlaps};
+  const api={LABELS,cp,compact,kind,annotationIssues,annotationWarnings,parseCity,parseImport,setKind,setRange,searchDoc,searchFavorite,counts,reviewProgress,isPending,exportDocs,exportReviewed,isDprOnly,exportReviewedWithoutDprOnly,matchingAnnotationIndices,exportAll,resumePendingIndex,exportOverlaps};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   root.AnnotationModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

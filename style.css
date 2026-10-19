@@ -104,7 +104,17 @@ h1 {margin:5px 0 10px;font-size:24px;line-height:1.35;font-weight:650}
 .mark.dpr {background:var(--dpr-bg);color:var(--dpr)}
 .mark.cpr {background:var(--cpr-bg);color:var(--cpr)}
 .mark.selected {outline:1.5px solid var(--selection-border);outline-offset:2px}
-.badge {position:relative;top:-.75em;margin:0 1px 0 2px;padding:1px 3px;border:1px solid currentColor;border-radius:4px;background:var(--surface);color:inherit;font-size:9px;line-height:1;font-weight:700;user-select:none;white-space:nowrap}
+.badge {position:relative;top:-.75em;margin:0 1px 0 2px;padding:1px 3px;border:1px solid currentColor;border-radius:4px;background:var(--type-bg,var(--surface));color:var(--type-color,inherit);font-size:9px;line-height:1;font-weight:700;user-select:none;white-space:nowrap}
+.type-RBL {--type-color:#68409c;--type-bg:#f0eafa}
+.type-AQT {--type-color:#985009;--type-bg:#fff0dc}
+.type-OSR {--type-color:#146b50;--type-bg:#e5f5ed}
+.type-VVR {--type-color:#a0326b;--type-bg:#fae8f2}
+.type-ABD {--type-color:#a63836;--type-bg:#fbeae8}
+html.dark .type-RBL {--type-color:#cbb4f4;--type-bg:#3b3050}
+html.dark .type-AQT {--type-color:#f2bc7d;--type-bg:#4c3928}
+html.dark .type-OSR {--type-color:#8cdec0;--type-bg:#27483b}
+html.dark .type-VVR {--type-color:#f1a6cd;--type-bg:#4e3040}
+html.dark .type-ABD {--type-color:#f2a6a1;--type-bg:#4e3030}
 .mark-badges {position:relative;top:-.75em;display:inline-flex;align-items:center;gap:3px;margin-left:2px;white-space:nowrap;user-select:none;cursor:pointer}
 .mark-badges .badge {top:0;margin:0}
 .mark-badges .annotation-warning {padding:0 4px;font-size:9px;line-height:1.4}
@@ -142,7 +152,7 @@ html.range-dragging .context {user-select:none}
 .boundary-warning {background:var(--cpr-bg);color:var(--cpr)}
 .pill {padding:2px 5px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap}
 .pill.dpr {color:var(--dpr);background:var(--dpr-bg)}
-.pill.cpr {color:var(--cpr);background:var(--cpr-bg)}
+.pill.cpr {color:var(--type-color,var(--cpr));background:var(--type-bg,var(--cpr-bg))}
 .annotation-row small {display:block;margin:6px 0;color:var(--muted);font-size:11px}
 .row-actions {display:flex;flex-wrap:wrap;gap:4px}
 .row-actions button {padding:3px 6px;border-color:transparent;background:transparent;color:var(--muted);font-size:11px}
@@ -239,7 +249,9 @@ html.range-dragging .context {user-select:none}
 .favorite-item .ordinal {color:#a77b00}
 .row-actions button.is-favorite {color:#a77b00}
 .mark.favorite-flash,.annotation-row.favorite-flash {background:var(--accent-soft)}
-.mark.favorite-flash {outline:2px solid var(--accent);outline-offset:2px}
+.mark.favorite-flash {outline:2px solid var(--accent);outline-offset:2px;animation:annotation-locate-flash 1.8s ease-in-out}
+@keyframes annotation-locate-flash {0%,50%,100%{box-shadow:none}25%,75%{box-shadow:0 0 0 4px var(--accent)}}
+@media(prefers-reduced-motion:reduce){.mark.favorite-flash{animation:none}}
 @media(max-width:1200px) {
   .topbar-main {flex-wrap:wrap;gap:8px}
   .top-actions {flex-wrap:wrap}
