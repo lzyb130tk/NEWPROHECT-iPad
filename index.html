@@ -47,9 +47,8 @@
     <section class="workspace">
       <div id="welcome" class="welcome"><div class="welcome-icon">⌁</div><h1>从一份城市 JSON 开始</h1><p>导入城市 JSON 或“导出全部”的工作区文件，逐篇检查并调整文字范围与类别。</p><button id="welcome-import" class="primary" type="button">选择 JSON 文件</button><p class="hint">修改自动保存在这台设备；请定期选择“导出全部”，在“文件”App 中确认备份。</p></div>
       <div id="editor" hidden>
-        <div class="doc-head"><div class="doc-head-main"><div id="docmeta" class="eyebrow"></div><div class="doc-head-actions"><button id="skip-toggle" type="button">不标记此篇</button><button id="review-toggle" type="button">标记为标注完</button></div></div><div class="doc-nav"><button id="prev" class="quiet" type="button" aria-label="上一篇">←</button><button id="next" class="quiet" type="button" aria-label="下一篇">→</button></div></div>
         <div class="editor-grid">
-          <div class="reading-panel"><div class="section-head"><div><strong>正文</strong><span id="span-count"></span></div><span class="hint">选中文字后点“标注”</span></div><div id="context" class="context" tabindex="0" aria-label="文档正文"></div><p class="interaction-help">选中文字后点选区旁的“标注”；已有标注可单击修改类别或删除。</p></div>
+          <div class="reading-panel"><div class="section-head editor-section-head"><div class="section-title"><strong>正文</strong><span id="docmeta" class="eyebrow"></span><span id="span-count"></span></div><div class="section-actions"><button id="skip-toggle" type="button">不标记此篇</button><button id="review-toggle" type="button">标记为标注完</button><div class="doc-nav"><button id="prev" class="quiet" type="button" aria-label="上一篇">←</button><button id="next" class="quiet" type="button" aria-label="下一篇">→</button></div></div></div><span class="hint section-instructions">选中文字后点“标注”</span><div id="context" class="context" tabindex="0" aria-label="文档正文"></div><p class="interaction-help">选中文字后点选区旁的“标注”；已有标注可单击修改类别或删除。</p></div>
           <aside class="annotations-panel"><div class="section-head"><strong>本篇标注</strong><button id="add-selection" class="quiet" type="button" disabled>标注选中文字</button></div><div id="issues"></div><div id="annotations"></div></aside>
         </div>
       </div>

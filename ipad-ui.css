@@ -115,11 +115,13 @@ h1,.section-head strong {font-family:var(--heading-font)}
 .eyebrow {font-size:11px}
 .doc-nav button {min-width:34px;height:34px}
 .editor-grid {grid-template-columns:minmax(0,1fr) 252px;min-height:0;background:var(--panel-bg)}
-.editor-grid>div.reading-panel:first-child {min-width:0;min-height:0;overflow-y:auto;padding:20px 24px 40px;background:var(--panel-bg)}
+.editor-grid>div.reading-panel:first-child {min-width:0;min-height:0;overflow-y:auto;padding:12px 24px 40px;background:var(--panel-bg)}
 .annotations-panel {min-width:0;min-height:0;overflow-y:auto;padding:20px 14px 40px;background:var(--annotation-bg);border-left:1px solid var(--line)}
 .section-head {margin-bottom:12px}
 .section-head strong {font-size:15px}
 .section-head .hint {font-size:10px;text-align:right}
+.editor-section-head {margin-bottom:5px;background:var(--panel-bg)}
+.section-instructions {font-size:10px}
 .context {padding:23px 24px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:16px;line-height:1.9}
 .annotation-row {border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:none}
 .annotation-row:hover {border-color:var(--line)}
@@ -167,7 +169,7 @@ html[data-style="macos"].dark .sidebar {background:rgba(28,28,30,.9);backdrop-fi
   #theme {min-width:0;font-size:10px}
   .top-actions {justify-content:flex-start;overflow-x:auto}
   .top-actions>button,.export-group button,.export-group select {font-size:10px}
-  .doc-head {padding:10px 13px}
-  .editor-grid>div.reading-panel:first-child {padding:14px 13px 30px}
+  .editor-grid>div.reading-panel:first-child {padding:10px 13px 30px}
+  .section-actions {margin-left:0}
   .context {padding:17px 14px;font-size:15px}
 }

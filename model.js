@@ -12,6 +12,26 @@
     if(a.desc_type==='CPR'&&!LABELS.slice(1).includes(a.cpr_pattern))issues.push('CPR 子类无效');
     return issues;
   }
+  function annotationWarnings(doc){
+    const chars=cp(doc.content),annotations=doc.annotations;
+    const warnings=annotations.map(a=>{
+      const valid=Number.isInteger(a.start)&&Number.isInteger(a.end)&&a.start>=0&&a.start<a.end&&a.end<=chars.length;
+      const value=valid?chars.slice(a.start,a.end).join(''):String(a.text??'');
+      const ends=cp(value),boundary=[];
+      if(ends.length&&/[\s\p{P}\p{S}]/u.test(ends[0]))boundary.push('开头');
+      if(ends.length&&/[\s\p{P}\p{S}]/u.test(ends.at(-1)))boundary.push('结尾');
+      return {overlap:false,boundary};
+    });
+    const ranges=annotations.map((a,index)=>({start:a.start,end:a.end,index}))
+      .filter(a=>Number.isInteger(a.start)&&Number.isInteger(a.end)&&a.start>=0&&a.start<a.end&&a.end<=chars.length)
+      .sort((a,b)=>a.start-b.start||b.end-a.end);
+    let furthest=null;
+    for(const range of ranges){
+      if(furthest&&range.start<furthest.end){warnings[range.index].overlap=true;warnings[furthest.index].overlap=true;}
+      if(!furthest||range.end>furthest.end)furthest=range;
+    }
+    return warnings;
+  }
   function parseCity(value){
     if(!Array.isArray(value))throw Error('城市 JSON 顶层应为文档数组。');
     const ids=new Set();
@@ -115,7 +135,7 @@
     });
     return conflicts;
   }
-  const api={LABELS,cp,compact,kind,annotationIssues,parseCity,parseImport,setKind,setRange,searchDoc,searchFavorite,counts,reviewProgress,isPending,exportDocs,exportReviewed,exportAll,resumePendingIndex,exportOverlaps};
+  const api={LABELS,cp,compact,kind,annotationIssues,annotationWarnings,parseCity,parseImport,setKind,setRange,searchDoc,searchFavorite,counts,reviewProgress,isPending,exportDocs,exportReviewed,exportAll,resumePendingIndex,exportOverlaps};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   root.AnnotationModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
