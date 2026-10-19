@@ -4,7 +4,7 @@
   const names={DPR:'直接地点',RBL:'相对位置',AQT:'锚点限定目标',OSR:'对象 / 场景',VVR:'视点 / 视觉关系',ABD:'语义类比'};
   const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   if(location.protocol==='file:'){
-    $('welcome').innerHTML='<div class="welcome-icon">⌁</div><h1>请从网页地址打开工作台</h1><p>iPad 离线版需要先从 GitHub Pages 等 HTTPS 地址打开，不能直接打开 index.html 文件。</p>';
+    $('welcome').innerHTML='<div class="welcome-icon">⌁</div><h1>请从网页地址打开工作台</h1><p>离线功能需要通过 GitHub Pages 等 HTTPS 地址使用，不能直接打开 index.html 文件。</p>';
     $('save-status').textContent='请打开网页地址';
     $('import').disabled=true;
     $('export').disabled=true;
@@ -250,7 +250,7 @@
     const source=await file.text(),input=JSON.parse(source.replace(/^\uFEFF/,''));
     const imported=M.parseImport(input,file.name);
     const result={docs:imported.docs,session:{id:crypto.randomUUID(),name:imported.name.split(/[\\/]/).pop().slice(0,200),reviewed:imported.reviewed,activeDocId:imported.activeDocId,lastPendingDocId:imported.lastPendingDocId}};
-    if(sessionId&&!confirm('导入会替换这台 iPad 上的当前工作区。请先确认已用“导出全部”保存需要的内容。继续导入吗？'))return;
+    if(sessionId&&!confirm('导入会替换当前设备上的工作区。请先确认已用“导出全部”保存需要的内容。继续导入吗？'))return;
     await S.save(result);
     docs=result.docs;reviewed=result.session.reviewed;lastPendingDocId=result.session.lastPendingDocId??null;sessionId=result.session.id;fileName=result.session.name;dirty=false;saveFailed=false;changeVersion=0;savedVersion=0;
     active=docs.findIndex(doc=>String(doc.id)===String(result.session.activeDocId));if(active<0)active=docs.length?0:-1;selected=-1;filterKind='all';favoritesOnly=false;$('favorites-filter').classList.remove('active');$('favorites-filter').setAttribute('aria-pressed','false');$('favorites-filter').textContent='☆ 只看收藏';$('query').value='';$('query').placeholder='标题、正文、文档 ID 或标注文字';$('scope').value='full';$('scope').options[0].textContent='全文包含';document.querySelectorAll('.category').forEach(b=>b.classList.toggle('active',b.dataset.kind==='all'));
