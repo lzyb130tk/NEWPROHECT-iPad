@@ -5,6 +5,7 @@
   --dpr:#216f96; --dpr-bg:#e5f3fa; --cpr:#8b6b12; --cpr-bg:#fbf4da;
   --danger:#c34c4c; --danger-bg:#fdf1f1; --shadow:0 2px 8px #37352f12;
   --selection-fill:#e5a23238; --selection-border:#cb8419;
+  --dpr-preview:#2e8fb930; --cpr-preview:#c49b2530;
 }
 html.dark {
   color-scheme:dark;
@@ -13,6 +14,7 @@ html.dark {
   --dpr:#a7d8ed; --dpr-bg:#294754; --cpr:#e7cf89; --cpr-bg:#4a422c;
   --danger:#e69a9a; --danger-bg:#493333; --shadow:0 2px 8px #0003;
   --selection-fill:#f2b84b42; --selection-border:#f2b84b;
+  --dpr-preview:#78bddb35; --cpr-preview:#e7cf8935;
 }
 * {box-sizing:border-box}
 html,body {height:100%;height:100dvh}
@@ -118,6 +120,12 @@ html.range-dragging .context {user-select:none}
 .drag-caret[hidden] {display:none}
 .selection-visual {position:fixed;z-index:4;inset:0;pointer-events:none}
 .selection-visual-rect {position:fixed;border:1.5px solid var(--selection-border);border-radius:5px;background:var(--selection-fill);box-shadow:0 1px 2px #00000012}
+.range-preview {position:fixed;z-index:3;inset:0;pointer-events:none}
+.range-preview-rect {position:fixed;border:1.5px solid;border-radius:4px;box-shadow:0 1px 2px #00000012}
+.range-preview.dpr .range-preview-rect {border-color:var(--dpr);background:var(--dpr-preview)}
+.range-preview.cpr .range-preview-rect {border-color:var(--cpr);background:var(--cpr-preview)}
+.mark.drag-source {background:transparent;color:var(--text);box-shadow:none;outline:1px dashed var(--line);outline-offset:2px}
+.mark.drag-source .mark-badges {opacity:.3}
 .selection-toolbar {position:fixed;z-index:70;display:flex;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--surface);box-shadow:var(--shadow)}
 .selection-toolbar[hidden] {display:none}
 .selection-toolbar button {padding:5px 10px;font-size:12px}

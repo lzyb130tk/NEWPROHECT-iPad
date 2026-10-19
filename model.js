@@ -111,13 +111,17 @@
       const docs=parseCity(value);
       return {docs,reviewed:docs.map(()=>false),activeDocId:docs[0]?.id??null,lastPendingDocId:docs[0]?.id??null,name:filename,isWorkspace:false};
     }
-    if(!value||!['newprohect-workspace-v1','newprohect-ipad-backup-v1'].includes(value.format))throw Error('JSON 格式无效，应为城市文档数组或工作区备份。');
-    const docs=parseCity(value.docs),reviewed=value.reviewed;
-    if(!Array.isArray(reviewed)||reviewed.length!==docs.length||reviewed.some(done=>typeof done!=='boolean'))throw Error('工作区标注状态无效。');
+    if(!value||typeof value!=='object')throw Error('JSON 格式无效，应为城市文档数组或工作区备份。');
+    const envelope=value.workspace&&typeof value.workspace==='object'&&!Array.isArray(value.workspace)?value.workspace:value;
+    const state=envelope.session&&typeof envelope.session==='object'&&!Array.isArray(envelope.session)?envelope.session:envelope;
+    const sourceDocs=Array.isArray(envelope.docs)?envelope.docs:Array.isArray(envelope.documents)?envelope.documents:Array.isArray(envelope.data)?envelope.data:null;
+    if(!sourceDocs)throw Error('未找到文档数组；旧版备份应包含 docs、documents 或 data。');
+    const docs=parseCity(sourceDocs),hasState=Array.isArray(state.reviewed),reviewed=hasState?state.reviewed:docs.map(()=>false);
+    if(hasState&&(reviewed.length!==docs.length||reviewed.some(done=>typeof done!=='boolean')))throw Error('工作区标注状态无效。');
     const validId=id=>id===null||id===undefined||docs.some(doc=>String(doc.id)===String(id));
-    if(!validId(value.activeDocId)||!validId(value.lastPendingDocId))throw Error('工作区文档位置无效。');
-    const index=resumePendingIndex(docs,reviewed,value.lastPendingDocId,value.activeDocId);
-    return {docs,reviewed,activeDocId:docs[index]?.id??null,lastPendingDocId:value.lastPendingDocId??null,name:typeof value.name==='string'&&value.name?value.name:filename,isWorkspace:true};
+    if(!validId(state.activeDocId)||!validId(state.lastPendingDocId))throw Error('工作区文档位置无效。');
+    const index=resumePendingIndex(docs,reviewed,state.lastPendingDocId,state.activeDocId);
+    return {docs,reviewed,activeDocId:docs[index]?.id??null,lastPendingDocId:state.lastPendingDocId??null,name:typeof state.name==='string'&&state.name?state.name:filename,isWorkspace:hasState||!!value.format||envelope!==value};
   }
   function exportOverlaps(docs){
     const conflicts=[];

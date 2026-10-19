@@ -103,7 +103,7 @@
     const label=M.kind(a),boundary=warning.boundary.join('和');
     return `<span class="mark-badges${secondary?' secondary-badges':''}"${secondary?` data-warning-ann="${index}" title="第 ${index+1} 条重叠标注；点击定位"`:''}><sup class="badge">${secondary?`#${index+1} `:''}${label}</sup>${warning.overlap?'<span class="annotation-warning overlap-warning" title="范围与其他标注重叠"><span aria-hidden="true">!</span> 范围重叠</span>':''}${boundary?`<span class="annotation-warning boundary-warning" title="${boundary}含空格、标点或符号">边界含符号/空格</span>`:''}</span>`;
   }
-  function renderContext(){clearSelectionVisual();const doc=current(),chars=M.cp(doc.content),ranges=validRanges(doc),warnings=M.annotationWarnings(doc),segments=[],groups=[];let cursor=0;
+  function renderContext(){clearSelectionVisual();clearRangePreview();const doc=current(),chars=M.cp(doc.content),ranges=validRanges(doc),warnings=M.annotationWarnings(doc),segments=[],groups=[];let cursor=0;
     for(const range of ranges){
       if(range.a.start<cursor){groups.at(-1).hidden.push(range);continue}
       groups.push({...range,hidden:[]});cursor=range.a.end;
@@ -125,6 +125,22 @@
       if(index>=start&&index<=start+chars.length)return {node,offset:chars.slice(0,index-start).join('').length};
     }
     return null;
+  }
+  function clearRangePreview(){$('range-preview').className='range-preview';$('range-preview').replaceChildren()}
+  function drawRangePreview(startIndex,endIndex,label){
+    const start=textPoint(startIndex),end=textPoint(endIndex);if(!start||!end){clearRangePreview();return}
+    const range=document.createRange();range.setStart(start.node,start.offset);range.setEnd(end.node,end.offset);
+    const context=$('context'),contextRect=context.getBoundingClientRect(),panelRect=context.parentElement.getBoundingClientRect(),fontSize=parseFloat(getComputedStyle(context).fontSize)||16;
+    const clip={left:Math.max(0,contextRect.left),right:Math.min(innerWidth,contextRect.right),top:Math.max(0,panelRect.top,contextRect.top),bottom:Math.min(innerHeight,panelRect.bottom,contextRect.bottom)},lines=[];
+    for(const rect of range.getClientRects()){
+      if(!rect.width||!rect.height)continue;
+      const height=Math.max(16,Math.min(fontSize+6,rect.height-2)),top=rect.top+(rect.height-height)/2;
+      const item={left:Math.max(clip.left,rect.left-2),right:Math.min(clip.right,rect.right+2),top:Math.max(clip.top,top),bottom:Math.min(clip.bottom,top+height)};
+      if(item.right<=item.left||item.bottom<=item.top)continue;
+      const previous=lines.at(-1);if(previous&&Math.abs(previous.top-item.top)<4&&item.left<=previous.right+4){previous.right=Math.max(previous.right,item.right);previous.bottom=Math.max(previous.bottom,item.bottom)}else lines.push(item);
+    }
+    const fragment=document.createDocumentFragment();for(const line of lines){const rect=document.createElement('span');rect.className='range-preview-rect';rect.style.left=`${line.left}px`;rect.style.top=`${line.top}px`;rect.style.width=`${line.right-line.left}px`;rect.style.height=`${line.bottom-line.top}px`;fragment.append(rect)}
+    const preview=$('range-preview');preview.className=`range-preview ${label==='DPR'?'dpr':'cpr'}`;preview.replaceChildren(fragment);
   }
   function highlightRange(a){
     if(!Number.isInteger(a.start)||!Number.isInteger(a.end)||a.start>=a.end)return false;
@@ -178,7 +194,8 @@
   function selectedRange(){const selection=getSelection();if(!selection||selection.isCollapsed||!$('context').contains(selection.anchorNode)||!$('context').contains(selection.focusNode))return null;const a=pointOffset(selection.anchorNode,selection.anchorOffset),b=pointOffset(selection.focusNode,selection.focusOffset);if(a===null||b===null||a===b)return null;return {start:Math.min(a,b),end:Math.max(a,b)}}
   function caretAt(x,y){const range=document.caretRangeFromPoint?.(x,y);if(range)return pointOffset(range.startContainer,range.startOffset);const caret=document.caretPositionFromPoint?.(x,y);return caret?pointOffset(caret.offsetNode,caret.offset):null}
   function showDragCaret(x,y){const indicator=$('drag-caret'),area=$('context').getBoundingClientRect();indicator.hidden=true;if(x<area.left||x>area.right||y<area.top||y>area.bottom)return;let range=document.caretRangeFromPoint?.(x,y);if(!range){const caret=document.caretPositionFromPoint?.(x,y);if(caret){range=document.createRange();range.setStart(caret.offsetNode,caret.offset);range.collapse(true)}}if(!range||pointOffset(range.startContainer,range.startOffset)===null)return;const rect=range.getClientRects()[0]||range.getBoundingClientRect();if(!rect?.height)return;indicator.style.left=`${rect.left}px`;indicator.style.top=`${rect.top}px`;indicator.style.height=`${rect.height}px`;indicator.hidden=false}
-  function stopRangeDrag(){dragging=null;document.documentElement.classList.remove('range-dragging');$('drag-caret').hidden=true}
+  function updateRangePreview(x,y){const pos=caretAt(x,y),a=current()?.annotations[dragging?.index];if(pos===null||!a)return;const start=dragging.side==='start'?Math.min(pos,a.end-1):a.start,end=dragging.side==='end'?Math.max(pos,a.start+1):a.end;dragging.preview={start,end};drawRangePreview(start,end,M.kind(a))}
+  function stopRangeDrag(){dragging?.source?.classList.remove('drag-source');dragging=null;clearRangePreview();document.documentElement.classList.remove('range-dragging');$('drag-caret').hidden=true}
   function createFromSelection(x,y,allowCharacter=false,useDraft=false){let range=selectedRange()||(useDraft&&selectionDraft&&String(selectionDraft.docId)===String(current()?.id)?selectionDraft:null);if(!range&&allowCharacter){const index=caretAt(x,y);if(index!==null&&index<M.cp(current().content).length)range={start:index,end:index+1}}if(!range)return false;showMenu(x,y,{type:'create',start:range.start,end:range.end});return true}
   function clearSelectionToolbar(){selectionDraft=null;selectionActionPress=false;$('selection-toolbar').hidden=true;$('add-selection').disabled=true;clearSelectionVisual();CSS.highlights?.delete('selection-draft')}
   function positionSelectionToolbar(range){if(!range)return;const rects=Array.from(range.getClientRects()).filter(rect=>rect.width&&rect.height),rect=rects.at(-1)||range.getBoundingClientRect(),bar=$('selection-toolbar');if(!rect?.height)return;bar.hidden=false;const width=bar.offsetWidth,height=bar.offsetHeight;bar.style.left=`${Math.max(8,Math.min(rect.right+8,innerWidth-width-8))}px`;bar.style.top=`${Math.max(8,Math.min(rect.bottom+8,innerHeight-height-8))}px`;if(rect.bottom+height+16>innerHeight)bar.style.top=`${Math.max(8,rect.top-height-8)}px`}
@@ -198,8 +215,8 @@
   }
   $('context').addEventListener('contextmenu',e=>{e.preventDefault();if(createFromSelection(e.clientX,e.clientY,false,true))return;const mark=e.target.closest('.mark');if(mark)showMenu(e.clientX,e.clientY,{type:'edit',index:Number(mark.dataset.ann)});else createFromSelection(e.clientX,e.clientY,true)});
   $('context').addEventListener('click',e=>{if(dragging||selectionDraft?.custom||!getSelection()?.isCollapsed||e.target.closest('.edge'))return;const secondary=e.target.closest('[data-warning-ann]');if(secondary){locateAnnotation(Number(secondary.dataset.warningAnn));return}const mark=e.target.closest('.mark');if(mark){selected=Number(mark.dataset.ann);renderContext();renderAnnotations();showMenu(e.clientX,e.clientY,{type:'edit',index:selected})}else hideMenu()});
-  $('context').addEventListener('pointerdown',e=>{const edge=e.target.closest('.edge');if(!edge)return;e.preventDefault();e.stopPropagation();const mark=edge.closest('.mark');dragging={index:Number(mark.dataset.ann),side:edge.dataset.edge};document.documentElement.classList.add('range-dragging');showDragCaret(e.clientX,e.clientY)});
-  document.addEventListener('pointermove',e=>{if(dragging)showDragCaret(e.clientX,e.clientY)});
+  $('context').addEventListener('pointerdown',e=>{const edge=e.target.closest('.edge');if(!edge)return;e.preventDefault();e.stopPropagation();const mark=edge.closest('.mark'),index=Number(mark.dataset.ann),a=current()?.annotations[index];dragging={index,side:edge.dataset.edge,source:mark};mark.classList.add('drag-source');document.documentElement.classList.add('range-dragging');if(a)drawRangePreview(a.start,a.end,M.kind(a));showDragCaret(e.clientX,e.clientY)});
+  document.addEventListener('pointermove',e=>{if(dragging){showDragCaret(e.clientX,e.clientY);updateRangePreview(e.clientX,e.clientY)}});
   document.addEventListener('pointerup',e=>{if(!dragging)return;const {index,side}=dragging,pos=caretAt(e.clientX,e.clientY);stopRangeDrag();const doc=current(),a=doc?.annotations[index];if(!a||pos===null)return;try{M.setRange(doc,a,side==='start'?Math.min(pos,a.end-1):a.start,side==='end'?Math.max(pos,a.start+1):a.end);selected=index;markChanged();renderEditor();toast('标注范围已更新')}catch(error){toast(error.message)}});
   document.addEventListener('pointercancel',stopRangeDrag);
   window.addEventListener('blur',stopRangeDrag);
