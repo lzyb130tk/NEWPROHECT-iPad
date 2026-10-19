@@ -98,14 +98,14 @@ h1 {margin:5px 0 10px;font-size:24px;line-height:1.35;font-weight:650}
 .section-actions {gap:6px;margin-left:auto}
 .section-actions>button {padding:5px 9px}
 .section-instructions {display:block;margin-bottom:10px;line-height:1.4}
-.context {min-height:220px;padding:25px 28px;border:1px solid var(--line);border-radius:6px;background:var(--surface);white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.95;user-select:text;-webkit-user-select:text;-webkit-touch-callout:none}
+.context {min-height:220px;padding:25px 28px;border:1px solid var(--line);border-radius:6px;background:var(--surface);white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.95;user-select:text;-webkit-user-select:text;-webkit-touch-callout:none;cursor:text}
 .segment {white-space:pre-wrap}
-.mark {position:relative;padding:2px 0;border-radius:3px;cursor:pointer;box-decoration-break:clone;-webkit-box-decoration-break:clone}
-.mark.dpr {background:var(--dpr-bg);color:var(--dpr);box-shadow:inset 0 -2px var(--dpr)}
-.mark.cpr {background:var(--cpr-bg);color:var(--cpr);box-shadow:inset 0 -2px var(--cpr)}
+.mark {position:relative;padding:2px 0;border-radius:3px;cursor:text;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.mark.dpr {background:var(--dpr-bg);color:var(--dpr)}
+.mark.cpr {background:var(--cpr-bg);color:var(--cpr)}
 .mark.selected {outline:3px solid var(--selection-border);outline-offset:2px}
 .badge {position:relative;top:-.75em;margin:0 1px 0 2px;padding:1px 3px;border:1px solid currentColor;border-radius:4px;background:var(--surface);color:inherit;font-size:9px;line-height:1;font-weight:700;user-select:none;white-space:nowrap}
-.mark-badges {position:relative;top:-.75em;display:inline-flex;align-items:center;gap:3px;margin-left:2px;white-space:nowrap;user-select:none}
+.mark-badges {position:relative;top:-.75em;display:inline-flex;align-items:center;gap:3px;margin-left:2px;white-space:nowrap;user-select:none;cursor:pointer}
 .mark-badges .badge {top:0;margin:0}
 .mark-badges .annotation-warning {padding:0 4px;font-size:9px;line-height:1.4}
 .mark-badges .overlap-warning span {width:11px;height:11px;font-size:9px}
