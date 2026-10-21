@@ -29,3 +29,19 @@ test('workspace export keeps mixed completion state',()=>{
   assert.deepEqual(imported.reviewed,[true,false]);
   assert.equal(imported.lastPendingDocId,2);
 });
+
+test('all categories locates matching annotations and drops documents after deletion',()=>{
+  const first={id:1,content:'山顶有观景台',annotations:[
+    {start:3,end:6,text:'观景台',desc_type:'DPR'},
+    {start:0,end:2,text:'山顶',desc_type:'CPR',cpr_pattern:'RBL'}
+  ]};
+  const second={id:2,content:'山顶远眺',annotations:[
+    {start:0,end:2,text:'山顶',desc_type:'DPR'}
+  ]};
+  const matches=docs=>docs.filter(doc=>M.searchDoc(doc,'观景','contains'));
+  assert.deepEqual(matches([first,second]).map(doc=>doc.id),[1]);
+  assert.deepEqual(M.matchingAnnotationIndices(first,'all','观景','contains'),[0]);
+  first.annotations.splice(0,1);
+  assert.deepEqual(matches([first,second]),[]);
+  assert.deepEqual(M.matchingAnnotationIndices(first,'all','观景','contains'),[]);
+});

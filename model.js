@@ -118,7 +118,7 @@
     return doc.annotations.flatMap((a,i)=>{
       if(favoritesOnly&&a.favorite!==true)return [];
       const label=kind(a);
-      if(filterKind==='DPR-only'?label!=='DPR':label!==filterKind)return [];
+      if(!label||(filterKind==='DPR-only'?label!=='DPR':filterKind!=='all'&&label!==filterKind))return [];
       const value=compact(a.text);
       const matches=!q||(
         scope==='start'?value.startsWith(q):
