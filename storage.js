@@ -33,5 +33,11 @@
     if(legacy)await transaction('readwrite',store=>store.put(legacy,'current'));
     return legacy;
   }
-  root.LocalWorkspace={load,save:value=>transaction('readwrite',store=>store.put(value,'current'))};
+  root.LocalWorkspace={
+    load,
+    save:value=>transaction('readwrite',store=>store.put(value,'current')),
+    loadCustomFont:()=>transaction('readonly',store=>store.get('custom-font')),
+    saveCustomFont:value=>transaction('readwrite',store=>store.put(value,'custom-font')),
+    clearCustomFont:()=>transaction('readwrite',store=>store.delete('custom-font'))
+  };
 })(globalThis);

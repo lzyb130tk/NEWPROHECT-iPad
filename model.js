@@ -109,7 +109,7 @@
   }
   const exportDocs=docs=>docs.filter(doc=>doc.review_skipped!==true);
   const isPending=(doc,done)=>done!==true&&doc.review_skipped!==true;
-  const exportReviewed=(docs,reviewed)=>docs.filter((_,i)=>reviewed[i]===true);
+  const exportReviewed=(docs,reviewed)=>docs.filter((_,i)=>reviewed[i]===true).map(doc=>({...doc,review_completed:true}));
   const isDprOnly=doc=>doc.annotations.length>0&&doc.annotations.every(a=>kind(a)==='DPR');
   const exportReviewedWithoutDprOnly=(docs,reviewed)=>exportReviewed(docs,reviewed).filter(doc=>!isDprOnly(doc));
   function matchingAnnotationIndices(doc,filterKind,query,scope,favoritesOnly=false){
@@ -142,8 +142,13 @@
   }
   function parseImport(value,filename){
     if(Array.isArray(value)){
-      const docs=parseCity(value);
-      return {docs,reviewed:docs.map(()=>false),activeDocId:docs[0]?.id??null,lastPendingDocId:docs[0]?.id??null,name:filename,isWorkspace:false};
+      const sourceDocs=parseCity(value);
+      // Older reviewed exports had no per-document marker; their generated filename is the only state hint.
+      const legacyReviewed=/_reviewed(?:_without_dpr_only)?(?: \(\d+\))?\.json$/i.test(filename);
+      const reviewed=sourceDocs.map(doc=>doc.review_completed===true||legacyReviewed);
+      const docs=sourceDocs.map(({review_completed,...doc})=>doc);
+      const firstPending=docs.findIndex((_,i)=>!reviewed[i]);
+      return {docs,reviewed,activeDocId:docs[0]?.id??null,lastPendingDocId:docs[firstPending]?.id??null,name:filename,isWorkspace:false};
     }
     if(!value||typeof value!=='object')throw Error('JSON 格式无效，应为城市文档数组或工作区备份。');
     const envelope=value.workspace&&typeof value.workspace==='object'&&!Array.isArray(value.workspace)?value.workspace:value;

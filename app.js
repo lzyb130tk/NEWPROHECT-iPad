@@ -33,6 +33,43 @@
     event.preventDefault();scroller.scrollTop+=(reverseWheel?-1:1)*distance;
   },{passive:false});
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200)}
+  let importedFont=null;
+  function setInterfaceFont(face,name){
+    if(importedFont)document.fonts.delete(importedFont);
+    importedFont=face;
+    if(face)document.fonts.add(face);
+    document.documentElement.dataset.customFont=face?'true':'false';
+    $('import-font').textContent=face?'更换字体':'导入字体';
+    $('import-font').title=face?`当前字体：${name}；点击更换 TTF 字体`:'导入 TTF 字体并应用到整个界面';
+    $('reset-font').hidden=!face;
+    refreshSelectionVisual();
+  }
+  async function loadInterfaceFont(data){
+    const face=new FontFace('ImportedInterfaceFont',await data.blob.arrayBuffer());
+    await face.load();
+    setInterfaceFont(face,data.name);
+  }
+  $('import-font').onclick=()=>$('font-file').click();
+  $('font-file').onchange=async event=>{
+    const file=event.target.files?.[0];
+    if(!file)return;
+    try{
+      await fontRestorePromise;
+      if(!/\.ttf$/i.test(file.name))throw Error('请选择 .ttf 字体文件');
+      const data={name:file.name,blob:file};
+      const face=new FontFace('ImportedInterfaceFont',await file.arrayBuffer());
+      await face.load();
+      await S.saveCustomFont(data);
+      setInterfaceFont(face,file.name);
+      toast(`已应用字体：${file.name}`);
+    }catch(error){toast(`字体导入失败：${error.message}`)}
+    finally{event.target.value=''}
+  };
+  $('reset-font').onclick=async()=>{
+    try{await fontRestorePromise;await S.clearCustomFont();setInterfaceFont(null,'');toast('已恢复默认字体')}
+    catch(error){toast(`恢复字体失败：${error.message}`)}
+  };
+  const fontRestorePromise=S.loadCustomFont().then(data=>data&&loadInterfaceFont(data)).catch(error=>toast(`字体读取失败：${error.message}`));
   function current(){return docs[active]}
   function clearSelectionVisual(){selectionVisualRange=null;$('selection-visual').replaceChildren()}
   function drawSelectionVisual(range){
